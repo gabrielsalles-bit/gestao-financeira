@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestao-livinha-v1';
+const CACHE_NAME = 'gestao-livinha-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -25,9 +25,31 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const isNavigation = request.mode === 'navigate' || request.destination === 'document';
+
+  if (isNavigation) {
+    // Network-first para navegações (o HTML/shell da página): garante que,
+    // após um deploy, o usuário sempre recebe o app novo quando está online.
+    // O cache só entra como fallback quando a rede falha (uso offline).
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
+    );
+    return;
+  }
+
+  // Cache-first para assets estáticos (JS/CSS/imagens): seguro porque o
+  // Next.js já inclui hash no nome de cada arquivo — um arquivo com hash
+  // antigo em cache nunca é referenciado pelo HTML novo.
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+    caches.match(request).then((response) => {
+      return response || fetch(request);
     })
   );
 });
