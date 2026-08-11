@@ -41,7 +41,7 @@ export const HealthTipsView: React.FC<HealthTipsViewProps> = ({
     return { ...cat, spent, shareOfTotal, shareOfLimit };
   }).sort((a, b) => b.spent - a.spent);
 
-  // Send test email simulation via Resend API
+  // Send test email simulation
   const handleSendTestEmail = (e: React.FormEvent) => {
     e.preventDefault();
     setSendingEmail(true);
@@ -67,7 +67,7 @@ export const HealthTipsView: React.FC<HealthTipsViewProps> = ({
               Saúde Financeira & Dicas da Livinha
             </h2>
             <p className="text-xs text-gray-300 mt-1 max-w-lg">
-              Diagnóstico contínuo dos seus envelopes de orçamento com alertas automatizados por e-mail (Resend API).
+              Diagnóstico contínuo dos seus envelopes de orçamento com alertas automatizados por e-mail.
             </p>
           </div>
 
@@ -134,7 +134,7 @@ export const HealthTipsView: React.FC<HealthTipsViewProps> = ({
         </div>
       </div>
 
-      {/* Resend Email Alerts Configuration (Section 4.5 PRD) */}
+      {/* Email Alerts Configuration (Section 4.5 PRD) */}
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -143,7 +143,7 @@ export const HealthTipsView: React.FC<HealthTipsViewProps> = ({
             </div>
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">
-                DISPAROS DE E-MAIL (RESEND API INTEGRATION)
+                DISPAROS DE E-MAIL (ALERTAS AUTOMÁTICOS)
               </h3>
               <p className="text-[11px] text-gray-500">Receba alertas em tempo real quando um nicho atingir 80% do limite</p>
             </div>
@@ -153,7 +153,7 @@ export const HealthTipsView: React.FC<HealthTipsViewProps> = ({
         {testEmailSent && (
           <div className="mb-4 p-3 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-semibold flex items-center gap-2">
             <CheckCircle2 size={16} />
-            <span>E-mail de teste enviado com sucesso via Resend API para {emailInput}!</span>
+            <span>E-mail de teste enviado com sucesso para {emailInput}!</span>
           </div>
         )}
 
