@@ -7,16 +7,20 @@ const STORAGE_KEYS = {
   USER_PREFS: 'livinha_user_prefs_v5',
 };
 
-// Nichos Exatos da Planilha da Livinha
+// Nichos exatos da planilha "Controle da Livinha". Limites iniciais calculados
+// a partir da média de gasto real (Jan-Ago/2026) nos meses em que cada nicho
+// teve movimento, com ~30% de folga — ajustável a qualquer momento em Ajustes.
 export const INITIAL_CATEGORIES: Category[] = [
-  { id: 'cat-alimentacao', name: 'Alimentação', icon: 'Utensils', color: '#10B981', monthlyLimit: 300, keywords: ['mercado', 'alimentacao', 'restaurante', 'ifood', 'padaria', 'carrefour'] },
-  { id: 'cat-uber', name: 'Uber', icon: 'Car', color: '#8257E5', monthlyLimit: 250, keywords: ['uber', '99', 'corrida'] },
-  { id: 'cat-gasolina', name: 'Gasolina', icon: 'Zap', color: '#F59E0B', monthlyLimit: 150, keywords: ['posto', 'gasolina', 'shell', 'ipiranga', 'combustivel'] },
-  { id: 'cat-vestimenta', name: 'Vestimenta', icon: 'Tag', color: '#EC4899', monthlyLimit: 100, keywords: ['vestuario', 'roupa', 'zara', 'renner', 'riachuelo', 'shein', 'loja'] },
-  { id: 'cat-lazer', name: 'Lazer', icon: 'Gift', color: '#6366F1', monthlyLimit: 100, keywords: ['cinema', 'bar', 'lazer', 'show', 'ingresso'] },
+  { id: 'cat-alimentacao', name: 'Alimentação', icon: 'Utensils', color: '#10B981', monthlyLimit: 150, keywords: ['mercado', 'alimentacao', 'restaurante', 'ifood', 'padaria', 'carrefour'] },
+  { id: 'cat-uber', name: 'Uber', icon: 'Car', color: '#8257E5', monthlyLimit: 200, keywords: ['uber', '99', 'corrida'] },
+  { id: 'cat-gasolina', name: 'Gasolina', icon: 'Fuel', color: '#F59E0B', monthlyLimit: 100, keywords: ['posto', 'gasolina', 'shell', 'ipiranga', 'combustivel'] },
   { id: 'cat-lavagem', name: 'Lavagem de Carro', icon: 'Sparkles', color: '#06B6D4', monthlyLimit: 50, keywords: ['lavagem', 'lava rapido', 'car wash', 'estetica automotiva'] },
-  { id: 'cat-viagens', name: 'Viagens', icon: 'Home', color: '#EF4444', monthlyLimit: 30, keywords: ['viagem', 'hotel', 'passagem', 'latam', 'gol', 'booking', 'airbnb'] },
-  { id: 'cat-outros', name: 'Outros', icon: 'HelpCircle', color: '#94A3B8', monthlyLimit: 20, keywords: ['outros', 'diversos'] },
+  { id: 'cat-faculdade', name: 'Faculdade', icon: 'GraduationCap', color: '#3B82F6', monthlyLimit: 200, keywords: ['faculdade', 'mensalidade', 'universidade', 'curso'] },
+  { id: 'cat-vestimenta', name: 'Vestimenta', icon: 'Shirt', color: '#EC4899', monthlyLimit: 200, keywords: ['vestuario', 'roupa', 'zara', 'renner', 'riachuelo', 'shein', 'loja'] },
+  { id: 'cat-lazer', name: 'Lazer', icon: 'Gift', color: '#6366F1', monthlyLimit: 100, keywords: ['cinema', 'bar', 'lazer', 'show', 'ingresso'] },
+  { id: 'cat-viagens', name: 'Viagens', icon: 'Plane', color: '#EF4444', monthlyLimit: 100, keywords: ['viagem', 'hotel', 'passagem', 'latam', 'gol', 'booking', 'airbnb'] },
+  { id: 'cat-compras', name: 'Compras', icon: 'ShoppingBag', color: '#A855F7', monthlyLimit: 200, keywords: ['compras', 'loja', 'shopping', 'amazon', 'mercado livre'] },
+  { id: 'cat-outros', name: 'Outros', icon: 'HelpCircle', color: '#94A3B8', monthlyLimit: 250, keywords: ['outros', 'diversos'] },
 ];
 
 export const INITIAL_TRANSACTIONS: Transaction[] = [
