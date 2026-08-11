@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, UploadCloud, FileText, CheckCircle2, AlertCircle, Edit3, ChevronDown, Smartphone, Info } from 'lucide-react';
 import { Category, Transaction } from '@/types/finance';
 import { ParsedRow, parseCSVFile, parseXLSXFile, mapRowsToParsedTransactions, markPossibleDuplicates } from '@/utils/csvXlsxParser';
+import { formatDate } from '@/utils/formatters';
 
 interface CSVImporterModalProps {
   isOpen: boolean;
@@ -200,7 +201,8 @@ export const CSVImporterModal: React.FC<CSVImporterModalProps> = ({
               )}
 
               <div className="border border-gray-100 rounded-2xl overflow-hidden">
-                <div className="grid grid-cols-[1fr_80px_1fr_40px] gap-0 bg-gray-50 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-gray-400">
+                <div className="grid grid-cols-[90px_1fr_80px_1fr_40px] gap-0 bg-gray-50 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-gray-400">
+                  <span>Data</span>
                   <span>Descrição</span>
                   <span>Valor</span>
                   <span>Nicho</span>
@@ -210,8 +212,9 @@ export const CSVImporterModal: React.FC<CSVImporterModalProps> = ({
                   {rows.filter((r) => !r.hasError).map((row, idx) => (
                     <div
                       key={idx}
-                      className={`grid grid-cols-[1fr_80px_1fr_40px] gap-1 items-center px-3 py-2 hover:bg-gray-50 transition-colors ${row.possibleDuplicate ? 'bg-amber-50/60' : ''}`}
+                      className={`grid grid-cols-[90px_1fr_80px_1fr_40px] gap-1 items-center px-3 py-2 hover:bg-gray-50 transition-colors ${row.possibleDuplicate ? 'bg-amber-50/60' : ''}`}
                     >
+                      <span className="text-[11px] font-semibold text-gray-600">{formatDate(row.date)}</span>
                       <div className="min-w-0">
                         <input
                           type="text"

@@ -50,7 +50,9 @@ function smartMapCategory(desc: string, categories: Category[]): string {
   for (const cat of categories) {
     if (cat.keywords?.some((kw) => lower.includes(kw.toLowerCase()))) return cat.id;
   }
-  return categories[0]?.id || '';
+  // Nenhuma keyword bateu: cai no nicho "Outros" (catch-all genuíno), não no
+  // primeiro nicho da lista por acaso (era "Alimentação" antes desta correção).
+  return categories.find((c) => c.id === 'cat-outros')?.id || categories[0]?.id || '';
 }
 
 export function mapRowsToParsedTransactions(
@@ -96,7 +98,9 @@ export function mapRowsToParsedTransactions(
       const type: TransactionType = forceType ? forceType : isNegative ? 'EXPENSE' : 'INCOME';
       const date = parseStatementDate(rawDate);
       const descStr = String(desc).trim() || `Lançamento ${idx + 1}`;
-      const hasError = !rawDate || value === 0;
+      // O caso value === 0 já retorna mais acima (linha "if (value === 0) return;"),
+      // então nunca chega aqui — checar de novo era código morto.
+      const hasError = !rawDate;
 
       parsed.push({
         description: descStr,
@@ -142,7 +146,11 @@ export async function parseXLSXFile(file: File): Promise<{ headers: string[]; ro
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: 'array' });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+  // raw: false força o SheetJS a devolver células de data já formatadas como
+  // texto (ex: "10/03/2026") em vez do número de série interno do Excel (ex:
+  // 45703), que parseStatementDate não reconhece e silenciosamente trocava
+  // pela data de hoje.
+  const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '', raw: false });
   const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
   return { headers, rows };
 }
