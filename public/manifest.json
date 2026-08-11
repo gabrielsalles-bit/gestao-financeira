@@ -1,7 +1,7 @@
 {
   "name": "Gestão da Livinha — Feito por Mozão",
   "short_name": "Gestão Livinha",
-  "description": "Sistema minimalista e automático de gestão financeira pessoal.",
+  "description": "Sistema simples e manual de gestão financeira pessoal, feito com carinho.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#121214",

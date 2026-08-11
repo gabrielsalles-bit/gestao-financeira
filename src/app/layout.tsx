@@ -4,7 +4,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export const metadata: Metadata = {
   title: 'Gestão da Livinha — Feito por Mozão ❤️',
-  description: 'Sistema minimalista e automático de gestão financeira pessoal.',
+  description: 'Sistema simples e manual de gestão financeira pessoal, feito com carinho.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
