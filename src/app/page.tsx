@@ -184,7 +184,7 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <AppSecurityLock>
+      <AppSecurityLock onUnlock={setUserPrefs}>
         <div className="min-h-screen bg-[#F8F9FA] pb-32 md:pb-12">
           <DashboardSkeleton />
         </div>
@@ -193,7 +193,7 @@ export default function Dashboard() {
   }
 
   return (
-    <AppSecurityLock>
+    <AppSecurityLock onUnlock={setUserPrefs}>
       <div className="min-h-screen bg-[#F8F9FA] pb-32 md:pb-12">
         <Navigation
           activeTab={activeTab}

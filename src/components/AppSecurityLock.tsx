@@ -9,11 +9,12 @@ import { UserPreferences } from '@/types/finance';
 
 interface AppSecurityLockProps {
   children: React.ReactNode;
+  onUnlock?: (prefs: UserPreferences) => void;
 }
 
 type LockState = 'loading' | 'setup' | 'unlock' | 'unlocked';
 
-export const AppSecurityLock: React.FC<AppSecurityLockProps> = ({ children }) => {
+export const AppSecurityLock: React.FC<AppSecurityLockProps> = ({ children, onUnlock }) => {
   const [state, setState] = useState<LockState>('loading');
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);
   const [pinInput, setPinInput] = useState('');
@@ -24,10 +25,16 @@ export const AppSecurityLock: React.FC<AppSecurityLockProps> = ({ children }) =>
     const alreadyUnlocked = typeof window !== 'undefined' && sessionStorage.getItem('livinha_app_unlocked') === 'true';
     StorageService.getUserPrefs().then((loaded) => {
       setPrefs(loaded);
-      if (alreadyUnlocked) setState('unlocked');
-      else if (!loaded.pinHash) setState('setup');
-      else setState('unlock');
+      if (alreadyUnlocked) {
+        setState('unlocked');
+        onUnlock?.(loaded);
+      } else if (!loaded.pinHash) {
+        setState('setup');
+      } else {
+        setState('unlock');
+      }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreatePin = async (e: React.FormEvent) => {
@@ -47,6 +54,7 @@ export const AppSecurityLock: React.FC<AppSecurityLockProps> = ({ children }) =>
     await StorageService.saveUserPrefs(updated);
     sessionStorage.setItem('livinha_app_unlocked', 'true');
     setState('unlocked');
+    onUnlock?.(updated);
   };
 
   const handleUnlock = async (e: React.FormEvent) => {
@@ -57,6 +65,7 @@ export const AppSecurityLock: React.FC<AppSecurityLockProps> = ({ children }) =>
     if (ok) {
       sessionStorage.setItem('livinha_app_unlocked', 'true');
       setState('unlocked');
+      onUnlock?.(prefs);
     } else {
       setError('PIN incorreto. Tente novamente!');
       setPinInput('');
