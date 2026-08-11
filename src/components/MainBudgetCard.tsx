@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Edit3, Smile, AlertTriangle, AlertCircle, Check, X, DollarSign } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit3, Smile, AlertTriangle, AlertCircle, X, DollarSign } from 'lucide-react';
 import { formatCurrency, getMonthName } from '@/utils/formatters';
 import { FinancialHealth } from '@/types/finance';
+import { Card } from '@/components/ui/Card';
 
 interface MainBudgetCardProps {
-  currentMonth: number; // 0-11
+  currentMonth: number;
   currentYear: number;
-  availableBudget: number;
   totalIncome: number;
   totalExpense: number;
   totalInvestment: number;
@@ -20,15 +20,12 @@ interface MainBudgetCardProps {
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onOpenCategoriesModal: () => void;
-  onQuickSync: () => void;
-  isSyncing: boolean;
   onUpdateBaseSalary: (newSalary: number) => void;
 }
 
 export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
   currentMonth,
   currentYear,
-  availableBudget,
   totalIncome,
   totalExpense,
   totalInvestment,
@@ -40,8 +37,6 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
   onPrevMonth,
   onNextMonth,
   onOpenCategoriesModal,
-  onQuickSync,
-  isSyncing,
   onUpdateBaseSalary,
 }) => {
   const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
@@ -57,9 +52,7 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
   const handleSaveSalary = (e: React.FormEvent) => {
     e.preventDefault();
     const val = parseFloat(salaryInput.replace(',', '.'));
-    if (!isNaN(val) && val > 0) {
-      onUpdateBaseSalary(val);
-    }
+    if (!isNaN(val) && val > 0) onUpdateBaseSalary(val);
     setIsSalaryModalOpen(false);
   };
 
@@ -90,32 +83,20 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
 
   return (
     <>
-      <div className="relative overflow-hidden rounded-3xl bg-obsidian text-white p-7 md:p-9 shadow-obsidian border border-obsidian-border transition-all duration-300">
-        {/* Background Glow */}
+      <Card tone="dark" padding="lg" className="relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-brand/20 via-purple-600/10 to-transparent rounded-full blur-3xl pointer-events-none"></div>
 
-        {/* Card Header: Month Selector & Status */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl p-1">
-              <button
-                onClick={onPrevMonth}
-                className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-                title="Mês Anterior"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="text-xs font-extrabold tracking-widest text-gray-200 uppercase px-2">
-                {getMonthName(currentMonth)} {currentYear}
-              </span>
-              <button
-                onClick={onNextMonth}
-                className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-                title="Próximo Mês"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
+          <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl p-1">
+            <button onClick={onPrevMonth} className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors" title="Mês Anterior">
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-xs font-extrabold tracking-widest text-gray-200 uppercase px-2">
+              {getMonthName(currentMonth)} {currentYear}
+            </span>
+            <button onClick={onNextMonth} className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors" title="Próximo Mês">
+              <ChevronRight size={16} />
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -130,17 +111,15 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
           </div>
         </div>
 
-        {/* Main Budget Displays (Saldo Mensal & Saldo Final) */}
         <div className="mb-6 relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">
-              Saldo Restante no Mês (Receita - Despesas)
+              Saldo do Mês (Receita − Despesas)
             </span>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight text-white leading-none">
               {formatCurrency(monthlyBalance, hideValues)}
             </h2>
 
-            {/* Clickable Base Salary Edit Pill */}
             <button
               onClick={handleOpenSalaryModal}
               className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-all text-xs font-bold cursor-pointer group"
@@ -153,17 +132,18 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
 
           <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
             <div>
-              <span className="text-[10px] font-bold text-purple-200 uppercase tracking-wider block">
-                Investimento Guardado
-              </span>
+              <span className="text-[10px] font-bold text-purple-200 uppercase tracking-wider block">Guardado em Investimento</span>
               <span className="text-xl font-extrabold text-brand-light block mt-0.5">
                 {formatCurrency(totalInvestment, hideValues)}
               </span>
             </div>
 
             <div className="text-right">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                Saldo Final Livre
+              <span
+                className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block"
+                title="Saldo do mês já descontando o que foi guardado em investimento"
+              >
+                Sobra Após Investir
               </span>
               <span className="text-base font-extrabold text-emerald-400 block mt-0.5">
                 {formatCurrency(finalBalance, hideValues)}
@@ -172,7 +152,6 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
           </div>
         </div>
 
-        {/* Footer: Usado vs Limite Nichos + Progress Bar */}
         <div className="relative z-10 pt-4 border-t border-white/10">
           <div className="flex items-center justify-between text-xs font-bold mb-2">
             <div>
@@ -185,7 +164,6 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
             </div>
           </div>
 
-          {/* Progress Bar */}
           <div className="w-full h-2.5 bg-gray-900 rounded-full overflow-hidden p-0.5 border border-white/10">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
@@ -199,9 +177,8 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
             ></div>
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* Modal Dedicado para Alterar Receita Base / Salário */}
       {isSalaryModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 relative text-gray-900">
@@ -212,19 +189,14 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
                 </div>
                 <h3 className="text-sm font-bold text-gray-900">Editar Receita Base</h3>
               </div>
-              <button
-                onClick={() => setIsSalaryModalOpen(false)}
-                className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-              >
+              <button onClick={() => setIsSalaryModalOpen(false)} className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100">
                 <X size={16} />
               </button>
             </div>
 
             <form onSubmit={handleSaveSalary} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Salário Base Mensal (R$)
-                </label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Salário Base Mensal (R$)</label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
                   <input
@@ -237,22 +209,15 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
                   />
                 </div>
                 <p className="text-[11px] text-gray-500 mt-1">
-                  Este valor será usado como receita base para calcular sua sobra mensal.
+                  Este valor é somado à receita de cada mês para calcular a sobra — inclusive nos meses anteriores do histórico.
                 </p>
               </div>
 
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsSalaryModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50"
-                >
+                <button type="button" onClick={() => setIsSalaryModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm"
-                >
+                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm">
                   Salvar
                 </button>
               </div>
