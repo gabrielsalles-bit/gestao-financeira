@@ -5,7 +5,13 @@ import React from 'react';
 import { PieChart, BarChart3, TrendingUp, TrendingDown, DollarSign, Award, Flame, Sparkles, Heart, Minus, Wallet, Target } from 'lucide-react';
 import { Category, FinancialHealth, Transaction } from '@/types/finance';
 import { formatCurrency, getMonthName, getSemaphoreColor } from '@/utils/formatters';
-import { groupTransactionsByMonth, getCategoryTrend, projectMonthEndTotal, getCumulativeBalanceSeries } from '@/utils/insights';
+import {
+  getCategoryTrend,
+  getExpenseTrend,
+  projectMonthEndTotal,
+  getCumulativeBalanceSeries,
+  getSavingsRateSeries,
+} from '@/utils/insights';
 import { EmptyState } from '@/components/ui/EmptyState';
 
 interface AnalysisViewProps {
@@ -54,19 +60,30 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ transactions, catego
 
   const topCategory = categoryStats.find((c) => c.spent > 0) || null;
 
-  const projection = projectMonthEndTotal(totalExpense, currentDate);
+  // A "projeção de fechamento" só faz sentido para o mês corrente de verdade
+  // (comparado à data real de hoje) — currentDate aqui é controlado pela
+  // navegação de mês em page.tsx, que sempre passa dia 1 do mês alvo
+  // (`new Date(y, m ± 1, 1)`), então NUNCA usar `currentDate` diretamente
+  // como "hoje" para essa conta: para qualquer mês passado isso faria
+  // daysElapsed = 1 sempre, inflando a projeção em até ~31x.
+  const today = new Date();
+  const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
+  const isPastMonth =
+    !isCurrentMonth && (year < today.getFullYear() || (year === today.getFullYear() && month < today.getMonth()));
+  const isFutureMonth = !isCurrentMonth && !isPastMonth;
+
+  const projection = isCurrentMonth ? projectMonthEndTotal(totalExpense, today) : null;
   const totalLimit = categories.reduce((sum, c) => sum + c.monthlyLimit, 0);
-  const projectionOverLimit = totalLimit > 0 ? projection.projectedTotal - totalLimit : null;
+  const projectionOverLimit = projection && totalLimit > 0 ? projection.projectedTotal - totalLimit : null;
 
   const savingsRate = totalIncome > 0 ? (totalIncome - totalExpense - totalInvestment) / totalIncome : 0;
 
-  const monthlyHistory = groupTransactionsByMonth(transactions);
-  const previousMonths = monthlyHistory.filter((m) => m.year !== year || m.month !== month).slice(-3);
-  const previousExpenseAvg = previousMonths.length > 0 ? previousMonths.reduce((sum, m) => sum + m.expense, 0) / previousMonths.length : null;
-  const expenseTrendPercent = previousExpenseAvg && previousExpenseAvg > 0 ? ((totalExpense - previousExpenseAvg) / previousExpenseAvg) * 100 : null;
+  const expenseTrend = getExpenseTrend(transactions, year, month);
 
   const cumulativeSeries = getCumulativeBalanceSeries(transactions, baseSalary);
   const maxAbsCumulative = Math.max(...cumulativeSeries.map((p) => Math.abs(p.cumulative)), 1);
+
+  const savingsRateSeries = getSavingsRateSeries(transactions, baseSalary);
 
   const categoryTrends = categories
     .map((cat) => getCategoryTrend(transactions, cat.id, year, month))
@@ -109,13 +126,13 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ transactions, catego
             <div className="w-8 h-8 rounded-xl bg-purple-50 text-brand flex items-center justify-center"><DollarSign size={16} /></div>
           </div>
           <h3 className="text-xl md:text-2xl font-black text-gray-900">{formatCurrency(totalExpense, hideValues)}</h3>
-          {expenseTrendPercent === null ? (
+          {expenseTrend.percentChange === null ? (
             <span className="text-[11px] font-semibold text-gray-400 block mt-1">Sem meses anteriores para comparar</span>
           ) : (
-            <span className={`text-[11px] font-semibold flex items-center gap-1 mt-1 ${expenseTrendPercent > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-              {expenseTrendPercent > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-              {expenseTrendPercent > 0 ? '+' : ''}
-              {expenseTrendPercent.toFixed(0)}% vs média dos últimos meses
+            <span className={`text-[11px] font-semibold flex items-center gap-1 mt-1 ${expenseTrend.direction === 'up' ? 'text-red-500' : expenseTrend.direction === 'down' ? 'text-emerald-600' : 'text-gray-500'}`}>
+              {expenseTrend.direction === 'up' ? <TrendingUp size={12} /> : expenseTrend.direction === 'down' ? <TrendingDown size={12} /> : <Minus size={12} />}
+              {expenseTrend.percentChange > 0 ? '+' : ''}
+              {expenseTrend.percentChange.toFixed(0)}% vs média dos últimos meses
             </span>
           )}
         </div>
@@ -133,17 +150,37 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ transactions, catego
 
         <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between text-gray-400 mb-2">
-            <span className="text-[10px] font-extrabold uppercase tracking-widest">Projeção de Fechamento</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-widest">
+              {isCurrentMonth ? 'Projeção de Fechamento' : 'Total do Mês (Encerrado)'}
+            </span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><Target size={16} /></div>
           </div>
-          <h3 className="text-xl font-black text-gray-900">{formatCurrency(projection.projectedTotal, hideValues)}</h3>
-          <span className={`text-[11px] font-semibold block mt-1 ${projectionOverLimit !== null && projectionOverLimit > 0 ? 'text-red-500' : 'text-gray-500'}`}>
-            {projectionOverLimit !== null
-              ? projectionOverLimit > 0
-                ? `${formatCurrency(Math.abs(projectionOverLimit), hideValues)} acima do limite dos nichos`
-                : 'Dentro do limite dos nichos, no ritmo atual'
-              : `No ritmo do dia ${projection.daysElapsed} de ${projection.daysInMonth}`}
-          </span>
+          {isCurrentMonth && projection ? (
+            <>
+              <h3 className="text-xl font-black text-gray-900">{formatCurrency(projection.projectedTotal, hideValues)}</h3>
+              <span className={`text-[11px] font-semibold block mt-1 ${projectionOverLimit !== null && projectionOverLimit > 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                {projectionOverLimit !== null
+                  ? projectionOverLimit > 0
+                    ? `${formatCurrency(Math.abs(projectionOverLimit), hideValues)} acima do limite dos nichos`
+                    : 'Dentro do limite dos nichos, no ritmo atual'
+                  : `No ritmo do dia ${projection.daysElapsed} de ${projection.daysInMonth}`}
+              </span>
+            </>
+          ) : isPastMonth ? (
+            <>
+              <h3 className="text-xl font-black text-gray-900">{formatCurrency(totalExpense, hideValues)}</h3>
+              <span className="text-[11px] font-semibold text-gray-500 block mt-1">
+                {totalLimit > 0
+                  ? `Mês fechado — total gasto vs. limite de ${formatCurrency(totalLimit, hideValues)}`
+                  : 'Mês fechado — total gasto (sem limite configurado)'}
+              </span>
+            </>
+          ) : (
+            <>
+              <h3 className="text-xl font-black text-gray-300">—</h3>
+              <span className="text-[11px] font-semibold text-gray-400 block mt-1">Ainda sem lançamentos para este mês</span>
+            </>
+          )}
         </div>
 
         <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
@@ -153,6 +190,28 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ transactions, catego
           </div>
           <h3 className="text-xl font-black text-gray-900">{(savingsRate * 100).toFixed(0)}%</h3>
           <span className="text-[11px] font-semibold text-gray-500 block mt-1">da receita guardada ou não gasta este mês</span>
+
+          {savingsRateSeries.length > 1 && (
+            <div className="flex items-end gap-1 mt-3 pt-3 border-t border-gray-100">
+              {savingsRateSeries.slice(-6).map((point) => {
+                const isCurrent = point.year === year && point.month === month;
+                const pct = point.rate * 100;
+                const barHeightPct = Math.min(100, Math.max(8, Math.abs(pct)));
+                return (
+                  <div key={`${point.year}-${point.month}`} className="flex-1 flex flex-col items-center gap-0.5 min-w-0">
+                    <span className={`text-[8px] font-extrabold ${isCurrent ? 'text-emerald-600' : 'text-gray-400'}`}>{pct.toFixed(0)}%</span>
+                    <div className="w-full h-8 flex items-end">
+                      <div
+                        className={`w-full rounded-sm ${pct < 0 ? 'bg-red-300' : isCurrent ? 'bg-emerald-500' : 'bg-emerald-200'}`}
+                        style={{ height: `${barHeightPct}%` }}
+                      ></div>
+                    </div>
+                    <span className={`text-[8px] font-bold ${isCurrent ? 'text-emerald-600' : 'text-gray-400'}`}>{getMonthName(point.month).slice(0, 3)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

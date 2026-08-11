@@ -20,6 +20,13 @@ export interface CategoryTrend {
   direction: 'up' | 'down' | 'stable';
 }
 
+export interface ExpenseTrend {
+  currentAmount: number;
+  averagePrevious: number;
+  percentChange: number | null; // null when no prior month has any data at all
+  direction: 'up' | 'down' | 'stable';
+}
+
 export interface MonthProjection {
   totalSoFar: number;
   projectedTotal: number;
@@ -114,6 +121,62 @@ export function getCategoryTrend(
   const direction: 'up' | 'down' | 'stable' = Math.abs(percentChange) < 5 ? 'stable' : percentChange > 0 ? 'up' : 'down';
 
   return { categoryId, currentAmount, averagePrevious, percentChange, direction };
+}
+
+// Mesmo padrão de getCategoryTrend acima ("anda" N meses calendário para trás
+// a partir do mês consultado, contando só meses com QUALQUER dado), mas soma
+// a despesa TOTAL do mês em vez de filtrar por nicho. Existe como função
+// separada e testada porque AnalysisView.tsx precisa da mesma comparação
+// "mês atual vs média dos meses anteriores" para o total geral, não só por
+// nicho — antes essa lógica estava reimplementada (e quebrada) inline no
+// componente, comparando contra os últimos 3 meses do histórico completo em
+// vez dos 3 meses cronologicamente anteriores ao mês selecionado.
+export function getExpenseTrend(
+  transactions: Transaction[],
+  year: number,
+  month: number,
+  monthsBack: number = 3
+): ExpenseTrend {
+  const expenseTxs = transactions.filter((t) => t.type === 'EXPENSE');
+
+  const currentAmount = expenseTxs
+    .filter((t) => {
+      const m = getTransactionMonth(t);
+      return m.year === year && m.month === month;
+    })
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const previousAmounts: number[] = [];
+  for (let i = 1; i <= monthsBack; i++) {
+    const d = new Date(year, month - i, 1);
+    const monthHasAnyData = transactions.some((t) => {
+      const m = getTransactionMonth(t);
+      return m.year === d.getFullYear() && m.month === d.getMonth();
+    });
+    if (!monthHasAnyData) continue;
+    const amount = expenseTxs
+      .filter((t) => {
+        const m = getTransactionMonth(t);
+        return m.year === d.getFullYear() && m.month === d.getMonth();
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+    previousAmounts.push(amount);
+  }
+
+  if (previousAmounts.length === 0) {
+    return { currentAmount, averagePrevious: 0, percentChange: null, direction: 'stable' };
+  }
+
+  const averagePrevious = previousAmounts.reduce((a, b) => a + b, 0) / previousAmounts.length;
+  const percentChange =
+    averagePrevious > 0
+      ? ((currentAmount - averagePrevious) / averagePrevious) * 100
+      : currentAmount > 0
+      ? 100
+      : 0;
+  const direction: 'up' | 'down' | 'stable' = Math.abs(percentChange) < 5 ? 'stable' : percentChange > 0 ? 'up' : 'down';
+
+  return { currentAmount, averagePrevious, percentChange, direction };
 }
 
 export function projectMonthEndTotal(totalSoFar: number, currentDate: Date = new Date()): MonthProjection {
