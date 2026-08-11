@@ -161,7 +161,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                 {/* Keywords Input for Auto Matching */}
                 <div>
                   <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">
-                    Palavras-Chave para o Nubank categorizar automático:
+                    Palavras-chave para reconhecer este nicho ao importar uma planilha:
                   </label>
                   <input
                     type="text"
