@@ -195,7 +195,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="bg-red-50/60 p-6 rounded-3xl border border-red-100 shadow-sm flex items-center justify-between">
         <div>
           <h4 className="text-xs font-bold text-red-900">Recomeçar do Zero (Limpar Dados)</h4>
-          <p className="text-[11px] text-red-700/80 mt-0.5">Remove todas as transações e nichos atuais para você criar seu próprio setup do zero.</p>
+          <p className="text-[11px] text-red-700/80 mt-0.5">Remove todas as transações, nichos, preferências e o PIN de acesso — você vai precisar criar um novo PIN na próxima vez que abrir o app.</p>
         </div>
 
         <button onClick={onResetData} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5">
