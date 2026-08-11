@@ -45,6 +45,5 @@ export interface UserPreferences {
   userName: string;
   baseSalary: number; // Salário base mensal configurável (ex: R$ 1000)
   hideValues: boolean;
-  alertEmail: string;
-  enableEmailAlerts: boolean;
+  pinHash: string | null; // null = nenhum PIN configurado ainda (primeiro uso)
 }
