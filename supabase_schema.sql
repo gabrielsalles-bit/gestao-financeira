@@ -41,9 +41,29 @@ create table public.user_preferences (
     updated_at timestamptz not null default timezone('utc'::text, now())
 );
 
--- RLS habilitado, mas com política permissiva: a chave anônima do projeto
--- já não é pública (fica em variável de ambiente), e o PIN da aplicação é
--- a camada de controle de acesso real.
+-- RLS habilitado, mas com política permissiva — leia com atenção antes de
+-- assumir que isso protege alguma coisa:
+--
+-- (a) A "chave anônima" (NEXT_PUBLIC_SUPABASE_ANON_KEY) NÃO é secreta. O
+--     Next.js embute variáveis NEXT_PUBLIC_* no bundle JavaScript enviado ao
+--     navegador — qualquer pessoa que abra o site publicado e olhe o código-
+--     fonte ou as requisições de rede consegue ler essa chave.
+-- (b) Com a policy abaixo ("using (true) with check (true)"), quem tiver
+--     essa chave tem acesso total de leitura/escrita/exclusão a todo o banco
+--     via API REST do Supabase — direto, sem passar pelo app.
+-- (c) O PIN em AppSecurityLock.tsx é só uma trava de interface (esconde a
+--     tela até digitar o PIN) — ele NÃO bloqueia chamadas diretas à API do
+--     Supabase. Ou seja, hoje, quem descobre a URL publicada e lê o bundle
+--     tem acesso irrestrito ao banco, PIN ou não.
+-- (d) Isso é uma decisão consciente, não um erro: este é um app pessoal, de
+--     uso privado a dois, sem dado além de finanças pessoais, sem divulgação
+--     pública da URL e sem listagem/indexação em lugar nenhum — o "segredo"
+--     de fato é a própria URL não ser conhecida por ninguém além do casal.
+-- (e) Se a URL deste app deixar de ser só dos dois (compartilhar com mais
+--     gente, divulgar em algum lugar, etc.), a camada de proteção real a
+--     adicionar é fora do banco: por exemplo, senha de acesso ao deployment
+--     na Vercel (Vercel Deployment Protection) — o PIN dentro do app não
+--     substitui isso.
 alter table public.categories enable row level security;
 alter table public.transactions enable row level security;
 alter table public.user_preferences enable row level security;
