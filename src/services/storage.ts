@@ -1,10 +1,11 @@
+// src/services/storage.ts
 import { Category, Transaction, UserPreferences } from '@/types/finance';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const STORAGE_KEYS = {
-  CATEGORIES: 'livinha_categories_v4',
-  TRANSACTIONS: 'livinha_transactions_v4',
-  USER_PREFS: 'livinha_user_prefs_v5',
+  CATEGORIES: 'livinha_categories_v6',
+  TRANSACTIONS: 'livinha_transactions_v6',
+  USER_PREFS: 'livinha_user_prefs_v6',
 };
 
 // Nichos exatos da planilha "Controle da Livinha". Limites iniciais calculados
@@ -23,200 +24,285 @@ export const INITIAL_CATEGORIES: Category[] = [
   { id: 'cat-outros', name: 'Outros', icon: 'HelpCircle', color: '#94A3B8', monthlyLimit: 250, keywords: ['outros', 'diversos'] },
 ];
 
-export const INITIAL_TRANSACTIONS: Transaction[] = [
-  // JANEIRO
-  { id: 'tx-jan-inc', description: 'Salário', amount: 1200.00, type: 'INCOME', categoryId: '', date: '2026-01-01', createdAt: '2026-01-01' },
-  { id: 'tx-jan-exp1', description: 'Uber Corrida', amount: 67.50, type: 'EXPENSE', categoryId: 'cat-uber', date: '2026-01-15', createdAt: '2026-01-15' },
-
-  // FEVEREIRO
-  { id: 'tx-fev-inc', description: 'Salário', amount: 1200.00, type: 'INCOME', categoryId: '', date: '2026-02-01', createdAt: '2026-02-01' },
-  { id: 'tx-fev-exp1', description: 'Uber Corrida', amount: 269.00, type: 'EXPENSE', categoryId: 'cat-uber', date: '2026-02-14', createdAt: '2026-02-14' },
-
-  // MARÇO
-  { id: 'tx-mar-inc', description: 'Salário', amount: 1200.00, type: 'INCOME', categoryId: '', date: '2026-03-01', createdAt: '2026-03-01' },
-  { id: 'tx-mar-exp1', description: 'Uber Corrida', amount: 223.66, type: 'EXPENSE', categoryId: 'cat-uber', date: '2026-03-18', createdAt: '2026-03-18' },
-
-  // ABRIL
-  { id: 'tx-abr-inc', description: 'Salário', amount: 1200.00, type: 'INCOME', categoryId: '', date: '2026-04-01', createdAt: '2026-04-01' },
-  { id: 'tx-abr-exp1', description: 'Uber Corrida', amount: 173.67, type: 'EXPENSE', categoryId: 'cat-uber', date: '2026-04-10', createdAt: '2026-04-10' },
-
-  // MAIO
-  { id: 'tx-mai-inc', description: 'Salário', amount: 1200.00, type: 'INCOME', categoryId: '', date: '2026-05-01', createdAt: '2026-05-01' },
-  { id: 'tx-mai-exp1', description: 'Uber Corrida', amount: 96.83, type: 'EXPENSE', categoryId: 'cat-uber', date: '2026-05-12', createdAt: '2026-05-12' },
-
-  // JUNHO
-  { id: 'tx-jun-inc', description: 'Salário', amount: 1200.00, type: 'INCOME', categoryId: '', date: '2026-06-01', createdAt: '2026-06-01' },
-  { id: 'tx-jun-exp1', description: 'Uber Corrida', amount: 200.71, type: 'EXPENSE', categoryId: 'cat-uber', date: '2026-06-20', createdAt: '2026-06-20' },
-
-  // JULHO
-  { id: 'tx-jul-inc', description: 'Salário', amount: 1200.00, type: 'INCOME', categoryId: '', date: '2026-07-01', createdAt: '2026-07-01' },
-  { id: 'tx-jul-exp1', description: 'Uber Corrida', amount: 222.78, type: 'EXPENSE', categoryId: 'cat-uber', date: '2026-07-05', createdAt: '2026-07-05' },
-  { id: 'tx-jul-exp2', description: 'Compras Vestimenta', amount: 200.00, type: 'EXPENSE', categoryId: 'cat-vestimenta', date: '2026-07-19', createdAt: '2026-07-19' },
-
-  // AGOSTO (ATUAL)
-  { id: 'tx-ago-inc', description: 'Salário', amount: 1200.00, type: 'INCOME', categoryId: '', date: '2026-08-01', createdAt: '2026-08-01' },
-  { id: 'tx-ago-exp1', description: 'Uber Corrida', amount: 54.87, type: 'EXPENSE', categoryId: 'cat-uber', date: '2026-08-03', createdAt: '2026-08-03' },
-];
-
 export const INITIAL_PREFS: UserPreferences = {
   userName: 'Livinha',
-  baseSalary: 1200.00,
+  baseSalary: 1000.00,
   hideValues: false,
-  alertEmail: 'livinha@exemplo.com',
-  enableEmailAlerts: true,
+  pinHash: null,
 };
 
-// ─────────────────────────────────────────────────────────
-// Supabase Sync Helpers (async, cloud)
-// ─────────────────────────────────────────────────────────
-const ANON_USER_ID = 'livinha-app-user-v1';
+export type SyncState = 'synced' | 'syncing' | 'offline';
 
-async function syncTransactionsToSupabase(transactions: Transaction[]): Promise<void> {
-  if (!isSupabaseConfigured() || !supabase) return;
+type SyncListener = (state: SyncState) => void;
+let listeners: SyncListener[] = [];
+let currentSyncState: SyncState = 'offline';
+
+export function onSyncStateChange(cb: SyncListener): () => void {
+  listeners.push(cb);
+  cb(currentSyncState);
+  return () => {
+    listeners = listeners.filter((l) => l !== cb);
+  };
+}
+
+function setSyncState(state: SyncState): void {
+  currentSyncState = state;
+  listeners.forEach((cb) => cb(state));
+}
+
+function readLocalCache<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
   try {
-    // Upsert all transactions for this user
-    const rows = transactions.map((t) => ({
-      id: t.id,
-      user_id: ANON_USER_ID,
-      description: t.description,
-      amount: t.amount,
-      type: t.type,
-      category_id: t.categoryId || null,
-      date: t.date,
-      created_at: t.createdAt,
-    }));
-    await supabase.from('transactions').upsert(rows, { onConflict: 'id' });
-  } catch (e) {
-    console.warn('Supabase sync (transactions) failed, using localStorage fallback:', e);
+    const data = localStorage.getItem(key);
+    return data ? (JSON.parse(data) as T) : fallback;
+  } catch {
+    return fallback;
   }
 }
 
-async function syncCategoriesToSupabase(categories: Category[]): Promise<void> {
-  if (!isSupabaseConfigured() || !supabase) return;
+function writeLocalCache<T>(key: string, value: T): void {
+  if (typeof window === 'undefined') return;
   try {
-    const rows = categories.map((c) => ({
-      id: c.id,
-      user_id: ANON_USER_ID,
-      name: c.name,
-      icon: c.icon,
-      color: c.color || '#8257E5',
-      monthly_limit: c.monthlyLimit,
-      keywords: c.keywords || [],
-    }));
-    await supabase.from('categories').upsert(rows, { onConflict: 'id' });
+    localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
-    console.warn('Supabase sync (categories) failed, using localStorage fallback:', e);
+    console.error(`Erro ao salvar cache local (${key}):`, e);
   }
 }
 
-async function syncPrefsToSupabase(prefs: UserPreferences): Promise<void> {
-  if (!isSupabaseConfigured() || !supabase) return;
-  try {
-    await supabase.from('user_preferences').upsert(
-      {
-        id: ANON_USER_ID,
-        user_name: prefs.userName,
-        base_salary: prefs.baseSalary,
-        hide_values: prefs.hideValues,
-        alert_email: prefs.alertEmail,
-        enable_email_alerts: prefs.enableEmailAlerts,
-      },
-      { onConflict: 'id' }
-    );
-  } catch (e) {
-    console.warn('Supabase sync (prefs) failed, using localStorage fallback:', e);
-  }
+function categoryToRow(c: Category) {
+  return {
+    id: c.id,
+    name: c.name,
+    icon: c.icon,
+    color: c.color || null,
+    monthly_limit: c.monthlyLimit,
+    keywords: c.keywords || [],
+  };
 }
 
-// ─────────────────────────────────────────────────────────
-// Main StorageService (localStorage + Supabase fallback)
-// ─────────────────────────────────────────────────────────
+function rowToCategory(r: any): Category {
+  return {
+    id: r.id,
+    name: r.name,
+    icon: r.icon,
+    color: r.color || undefined,
+    monthlyLimit: Number(r.monthly_limit),
+    keywords: r.keywords || [],
+  };
+}
+
+function transactionToRow(t: Transaction) {
+  return {
+    id: t.id,
+    description: t.description,
+    amount: t.amount,
+    type: t.type,
+    category_id: t.categoryId || null,
+    date: t.date,
+    created_at: t.createdAt,
+  };
+}
+
+function rowToTransaction(r: any): Transaction {
+  return {
+    id: r.id,
+    description: r.description,
+    amount: Number(r.amount),
+    type: r.type,
+    categoryId: r.category_id || '',
+    date: r.date,
+    createdAt: r.created_at,
+  };
+}
+
 export class StorageService {
-  static getCategories(): Category[] {
-    if (typeof window === 'undefined') return INITIAL_CATEGORIES;
+  static async getCategories(): Promise<Category[]> {
+    const cached = readLocalCache<Category[]>(STORAGE_KEYS.CATEGORIES, INITIAL_CATEGORIES);
+    if (!isSupabaseConfigured() || !supabase) {
+      setSyncState('offline');
+      return cached;
+    }
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-      if (!data) {
-        this.saveCategories(INITIAL_CATEGORIES);
+      setSyncState('syncing');
+      const { data, error } = await supabase.from('categories').select('*').order('created_at', { ascending: true });
+      if (error) throw error;
+      setSyncState('synced');
+      if (!data || data.length === 0) {
+        await StorageService.saveCategories(INITIAL_CATEGORIES);
         return INITIAL_CATEGORIES;
       }
-      const parsed = JSON.parse(data);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_CATEGORIES;
-    } catch {
-      return INITIAL_CATEGORIES;
-    }
-  }
-
-  static saveCategories(categories: Category[]): void {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
-      // Fire-and-forget cloud sync
-      syncCategoriesToSupabase(categories);
+      const mapped = data.map(rowToCategory);
+      writeLocalCache(STORAGE_KEYS.CATEGORIES, mapped);
+      return mapped;
     } catch (e) {
-      console.error('Erro ao salvar categorias:', e);
+      console.warn('Supabase indisponível, usando cache local (categorias):', e);
+      setSyncState('offline');
+      return cached;
     }
   }
 
-  static getTransactions(): Transaction[] {
-    if (typeof window === 'undefined') return INITIAL_TRANSACTIONS;
+  static async saveCategories(categories: Category[]): Promise<void> {
+    const previous = readLocalCache<Category[]>(STORAGE_KEYS.CATEGORIES, []);
+    const newIds = new Set(categories.map((c) => c.id));
+    const removedIds = previous.filter((c) => !newIds.has(c.id)).map((c) => c.id);
+    writeLocalCache(STORAGE_KEYS.CATEGORIES, categories);
+
+    if (!isSupabaseConfigured() || !supabase) {
+      setSyncState('offline');
+      return;
+    }
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-      if (!data) {
-        this.saveTransactions(INITIAL_TRANSACTIONS);
-        return INITIAL_TRANSACTIONS;
+      setSyncState('syncing');
+      if (removedIds.length > 0) {
+        const { error: delError } = await supabase.from('categories').delete().in('id', removedIds);
+        if (delError) throw delError;
       }
-      const parsed = JSON.parse(data);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_TRANSACTIONS;
-    } catch {
-      return INITIAL_TRANSACTIONS;
-    }
-  }
-
-  static saveTransactions(transactions: Transaction[]): void {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
-      // Fire-and-forget cloud sync
-      syncTransactionsToSupabase(transactions);
+      const { error } = await supabase.from('categories').upsert(categories.map(categoryToRow), { onConflict: 'id' });
+      if (error) throw error;
+      setSyncState('synced');
     } catch (e) {
-      console.error('Erro ao salvar transações:', e);
+      console.warn('Falha ao sincronizar categorias com o Supabase:', e);
+      setSyncState('offline');
     }
   }
 
-  static getUserPrefs(): UserPreferences {
-    if (typeof window === 'undefined') return INITIAL_PREFS;
+  static async getTransactions(): Promise<Transaction[]> {
+    const cached = readLocalCache<Transaction[]>(STORAGE_KEYS.TRANSACTIONS, []);
+    if (!isSupabaseConfigured() || !supabase) {
+      setSyncState('offline');
+      return cached;
+    }
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.USER_PREFS);
+      setSyncState('syncing');
+      const { data, error } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+      if (error) throw error;
+      setSyncState('synced');
+      const mapped = (data || []).map(rowToTransaction);
+      writeLocalCache(STORAGE_KEYS.TRANSACTIONS, mapped);
+      return mapped;
+    } catch (e) {
+      console.warn('Supabase indisponível, usando cache local (transações):', e);
+      setSyncState('offline');
+      return cached;
+    }
+  }
+
+  static async saveTransactions(transactions: Transaction[]): Promise<void> {
+    const previous = readLocalCache<Transaction[]>(STORAGE_KEYS.TRANSACTIONS, []);
+    const newIds = new Set(transactions.map((t) => t.id));
+    const removedIds = previous.filter((t) => !newIds.has(t.id)).map((t) => t.id);
+    writeLocalCache(STORAGE_KEYS.TRANSACTIONS, transactions);
+
+    if (!isSupabaseConfigured() || !supabase) {
+      setSyncState('offline');
+      return;
+    }
+    try {
+      setSyncState('syncing');
+      if (removedIds.length > 0) {
+        const { error: delError } = await supabase.from('transactions').delete().in('id', removedIds);
+        if (delError) throw delError;
+      }
+      const { error } = await supabase.from('transactions').upsert(transactions.map(transactionToRow), { onConflict: 'id' });
+      if (error) throw error;
+      setSyncState('synced');
+    } catch (e) {
+      console.warn('Falha ao sincronizar transações com o Supabase:', e);
+      setSyncState('offline');
+    }
+  }
+
+  static async getUserPrefs(): Promise<UserPreferences> {
+    const cached = readLocalCache<UserPreferences>(STORAGE_KEYS.USER_PREFS, INITIAL_PREFS);
+    if (!isSupabaseConfigured() || !supabase) {
+      setSyncState('offline');
+      return cached;
+    }
+    try {
+      setSyncState('syncing');
+      const { data, error } = await supabase.from('user_preferences').select('*').eq('id', 'default').maybeSingle();
+      if (error) throw error;
+      setSyncState('synced');
       if (!data) {
-        this.saveUserPrefs(INITIAL_PREFS);
+        await StorageService.saveUserPrefs(INITIAL_PREFS);
         return INITIAL_PREFS;
       }
-      return { ...INITIAL_PREFS, ...JSON.parse(data) };
-    } catch {
-      return INITIAL_PREFS;
-    }
-  }
-
-  static saveUserPrefs(prefs: UserPreferences): void {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(STORAGE_KEYS.USER_PREFS, JSON.stringify(prefs));
-      // Fire-and-forget cloud sync
-      syncPrefsToSupabase(prefs);
+      const prefs: UserPreferences = {
+        userName: data.user_name,
+        baseSalary: Number(data.base_salary),
+        hideValues: Boolean(data.hide_values),
+        pinHash: data.pin_hash || null,
+      };
+      writeLocalCache(STORAGE_KEYS.USER_PREFS, prefs);
+      return prefs;
     } catch (e) {
-      console.error('Erro ao salvar preferências:', e);
+      console.warn('Supabase indisponível, usando cache local (preferências):', e);
+      setSyncState('offline');
+      return cached;
     }
   }
 
-  static clearAllData(): void {
-    if (typeof window === 'undefined') return;
+  static async saveUserPrefs(prefs: UserPreferences): Promise<void> {
+    writeLocalCache(STORAGE_KEYS.USER_PREFS, prefs);
+    if (!isSupabaseConfigured() || !supabase) {
+      setSyncState('offline');
+      return;
+    }
     try {
+      setSyncState('syncing');
+      const { error } = await supabase.from('user_preferences').upsert(
+        {
+          id: 'default',
+          user_name: prefs.userName,
+          base_salary: prefs.baseSalary,
+          hide_values: prefs.hideValues,
+          pin_hash: prefs.pinHash,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+      if (error) throw error;
+      setSyncState('synced');
+    } catch (e) {
+      console.warn('Falha ao sincronizar preferências com o Supabase:', e);
+      setSyncState('offline');
+    }
+  }
+
+  static async clearAllData(): Promise<void> {
+    writeLocalCache(STORAGE_KEYS.CATEGORIES, []);
+    writeLocalCache(STORAGE_KEYS.TRANSACTIONS, []);
+    writeLocalCache(STORAGE_KEYS.USER_PREFS, INITIAL_PREFS);
+    if (typeof window !== 'undefined') {
       localStorage.removeItem(STORAGE_KEYS.CATEGORIES);
       localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
       localStorage.removeItem(STORAGE_KEYS.USER_PREFS);
+    }
+    if (!isSupabaseConfigured() || !supabase) return;
+    try {
+      await supabase.from('transactions').delete().neq('id', '');
+      await supabase.from('categories').delete().neq('id', '');
+      await supabase.from('user_preferences').delete().neq('id', '');
     } catch (e) {
-      console.error('Erro ao limpar dados:', e);
+      console.warn('Falha ao limpar dados no Supabase:', e);
     }
   }
+}
+
+// Reenvia o snapshot atual (em memória, vindo do React state) para o
+// Supabase quando a conexão volta — best-effort, sem fila de retries.
+export function attachOnlineSync(getSnapshot: () => {
+  categories: Category[];
+  transactions: Transaction[];
+  prefs: UserPreferences;
+}): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const handler = () => {
+    const { categories, transactions, prefs } = getSnapshot();
+    StorageService.saveCategories(categories);
+    StorageService.saveTransactions(transactions);
+    StorageService.saveUserPrefs(prefs);
+  };
+  window.addEventListener('online', handler);
+  return () => window.removeEventListener('online', handler);
 }
