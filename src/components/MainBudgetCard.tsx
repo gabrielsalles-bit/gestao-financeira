@@ -10,6 +10,7 @@ interface MainBudgetCardProps {
   currentMonth: number;
   currentYear: number;
   totalIncome: number;
+  baseSalary: number;
   totalExpense: number;
   totalInvestment: number;
   monthlyBalance: number;
@@ -27,6 +28,7 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
   currentMonth,
   currentYear,
   totalIncome,
+  baseSalary,
   totalExpense,
   totalInvestment,
   monthlyBalance,
@@ -40,12 +42,12 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
   onUpdateBaseSalary,
 }) => {
   const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
-  const [salaryInput, setSalaryInput] = useState(totalIncome.toString());
+  const [salaryInput, setSalaryInput] = useState(baseSalary.toString());
 
   const percentage = totalLimit > 0 ? Math.min(100, (totalExpense / totalLimit) * 100) : 0;
 
   const handleOpenSalaryModal = () => {
-    setSalaryInput(totalIncome.toString());
+    setSalaryInput(baseSalary.toString());
     setIsSalaryModalOpen(true);
   };
 
@@ -125,7 +127,7 @@ export const MainBudgetCard: React.FC<MainBudgetCardProps> = ({
               className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-all text-xs font-bold cursor-pointer group"
               title="Clique para editar a Receita Base / Salário"
             >
-              <span>Receita Base: {formatCurrency(totalIncome, hideValues)}</span>
+              <span>Receita Base: {formatCurrency(baseSalary, hideValues)}</span>
               <Edit3 size={13} className="text-emerald-400 group-hover:scale-110 transition-transform" />
             </button>
           </div>

@@ -213,6 +213,7 @@ export default function Dashboard() {
                 currentMonth={currentDate.getMonth()}
                 currentYear={currentDate.getFullYear()}
                 totalIncome={totalIncome}
+                baseSalary={userPrefs.baseSalary}
                 totalExpense={totalExpense}
                 totalInvestment={totalInvestment}
                 monthlyBalance={monthlyBalance}
