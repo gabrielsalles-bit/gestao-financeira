@@ -1,55 +1,63 @@
+// src/components/Navigation.tsx
 'use client';
 
 import React from 'react';
 import {
-  LayoutDashboard,
-  Receipt,
-  PieChart,
-  Landmark,
-  Sparkles,
-  Settings,
-  Eye,
-  EyeOff,
-  Bell,
-  CheckCircle2,
-  RefreshCw,
-  Plus,
-  Heart
+  LayoutDashboard, Receipt, PieChart, Settings, Eye, EyeOff, Bell, Plus, Heart,
+  Cloud, CloudOff, RefreshCw,
 } from 'lucide-react';
+import { SyncState } from '@/services/storage';
 
-export type TabType = 'dashboard' | 'extract' | 'reports' | 'openfinance' | 'tips' | 'settings';
+export type TabType = 'dashboard' | 'extract' | 'analysis' | 'settings';
 
 interface NavigationProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
   onOpenNewTransaction: () => void;
-  userName: string;
   hideValues: boolean;
   onToggleHideValues: () => void;
   hasAlerts: boolean;
   onOpenAlerts: () => void;
-  onQuickSync: () => void;
-  isSyncing: boolean;
+  syncState: SyncState;
 }
+
+const SYNC_LABEL: Record<SyncState, string> = {
+  synced: 'Sincronizado',
+  syncing: 'Sincronizando...',
+  offline: 'Offline — dados salvos localmente',
+};
+
+const SyncIndicator: React.FC<{ syncState: SyncState }> = ({ syncState }) => {
+  const Icon = syncState === 'offline' ? CloudOff : syncState === 'syncing' ? RefreshCw : Cloud;
+  const colorClass =
+    syncState === 'offline'
+      ? 'bg-amber-50 text-amber-700 border-amber-200/60'
+      : 'bg-emerald-50 text-emerald-700 border-emerald-200/60';
+  return (
+    <div
+      className={`hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-semibold ${colorClass}`}
+      title={SYNC_LABEL[syncState]}
+    >
+      <Icon size={12} className={syncState === 'syncing' ? 'animate-spin' : ''} />
+      <span className="whitespace-nowrap">{SYNC_LABEL[syncState]}</span>
+    </div>
+  );
+};
 
 export const Navigation: React.FC<NavigationProps> = ({
   activeTab,
   onTabChange,
   onOpenNewTransaction,
-  userName,
   hideValues,
   onToggleHideValues,
   hasAlerts,
   onOpenAlerts,
-  onQuickSync,
-  isSyncing,
+  syncState,
 }) => {
   const navItems: { id: TabType; label: string; shortLabel: string; icon: React.ElementType }[] = [
     { id: 'dashboard', label: 'Início', shortLabel: 'Início', icon: LayoutDashboard },
     { id: 'extract', label: 'Extrato', shortLabel: 'Extrato', icon: Receipt },
-    { id: 'reports', label: 'Análise', shortLabel: 'Análise', icon: PieChart },
-    { id: 'openfinance', label: 'Nubank Sync', shortLabel: 'Nubank', icon: Landmark },
-    { id: 'tips', label: 'Saúde & Dicas', shortLabel: 'Saúde', icon: Sparkles },
+    { id: 'analysis', label: 'Análise', shortLabel: 'Análise', icon: PieChart },
     { id: 'settings', label: 'Ajustes', shortLabel: 'Ajustes', icon: Settings },
   ];
 
@@ -58,8 +66,6 @@ export const Navigation: React.FC<NavigationProps> = ({
       {/* Top Header Bar (Desktop & Tablet) */}
       <header className="bg-white border-b border-gray-100 py-3.5 px-6 sticky top-0 z-40 shadow-sm/50">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-          
-          {/* Left Brand: Gestão da Livinha - Feito por Mozão */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand to-purple-400 text-white flex items-center justify-center font-extrabold text-base shadow-md">
@@ -75,22 +81,9 @@ export const Navigation: React.FC<NavigationProps> = ({
               </div>
             </div>
 
-            {/* Live Auto-Sync Status Badge */}
-            <button
-              onClick={onQuickSync}
-              disabled={isSyncing}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[11px] font-semibold hover:bg-emerald-100 transition-all cursor-pointer"
-              title="Clique para sincronizar lançamentos do Nubank agora"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="whitespace-nowrap">
-                {isSyncing ? 'Sincronizando Nubank...' : 'Nubank Conectado (100% Automático)'}
-              </span>
-              <RefreshCw size={12} className={`ml-1 text-emerald-600 ${isSyncing ? 'animate-spin' : ''}`} />
-            </button>
+            <SyncIndicator syncState={syncState} />
           </div>
 
-          {/* Center Tabs Navigation */}
           <nav className="hidden md:flex items-center gap-1 bg-gray-50/80 p-1 rounded-2xl border border-gray-200/60">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -100,9 +93,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                   key={item.id}
                   onClick={() => onTabChange(item.id)}
                   className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
-                    isActive
-                      ? 'bg-obsidian text-white shadow-sm font-bold'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/60'
+                    isActive ? 'bg-obsidian text-white shadow-sm font-bold' : 'text-gray-600 hover:text-gray-900 hover:bg-white/60'
                   }`}
                 >
                   <Icon size={14} className={isActive ? 'text-brand-light' : 'text-gray-400'} />
@@ -112,9 +103,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             })}
           </nav>
 
-          {/* Right Utilities */}
           <div className="flex items-center gap-2">
-            {/* Toggle Privacy */}
             <button
               onClick={onToggleHideValues}
               className="p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 transition-all border border-gray-200/60"
@@ -123,7 +112,6 @@ export const Navigation: React.FC<NavigationProps> = ({
               {hideValues ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
 
-            {/* Notifications */}
             <button
               onClick={onOpenAlerts}
               className="relative p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 transition-all border border-gray-200/60"
@@ -135,13 +123,13 @@ export const Navigation: React.FC<NavigationProps> = ({
               )}
             </button>
 
-            {/* Optional Manual Add */}
+            {/* Ação primária: sem automação, este é o único jeito de lançar um gasto */}
             <button
               onClick={onOpenNewTransaction}
-              className="p-2 rounded-xl bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-brand transition-all border border-gray-200/60"
-              title="Adicionar Lançamento Manual (Opcional)"
+              className="flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md transition-all"
             >
               <Plus size={16} />
+              <span className="hidden sm:inline">Novo Lançamento</span>
             </button>
           </div>
         </div>
@@ -165,7 +153,6 @@ export const Navigation: React.FC<NavigationProps> = ({
             </button>
           );
         })}
-        {/* Quick Add Button in Mobile Nav */}
         <button
           onClick={onOpenNewTransaction}
           className="flex flex-col items-center gap-0.5 px-1.5 py-1.5 rounded-xl transition-all text-brand-light hover:text-brand"
